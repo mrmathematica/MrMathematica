@@ -1,7 +1,6 @@
 #lang racket/base
 
-(require ffi/unsafe
-         (only-in '#%foreign ffi-callback))
+(require ffi/unsafe)
 
 (provide (except-out (all-defined-out)
                      mathlink))
@@ -19,17 +18,13 @@
 (define mathlink
   (ffi-lib (case (system-type 'os)
              ((unix)
-              (case (compiler-sizeof '*)
-                ((4)
-                 "libML32i3")
-                ((8)
-                 "libML64i3")))
+              (string-append "libML"
+                             (number->string (* (compiler-sizeof '*) 8))
+                             "i3"))
              ((windows)
-              (case (compiler-sizeof '*)
-                ((4)
-                 "ml32i3")
-                ((8)
-                 "ml64i3")))
+              (string-append "ml"
+                             (number->string (* (compiler-sizeof '*) 8))
+                             "i3"))
              ((macosx)
               "mathlink.framework/mathlink"))))
 

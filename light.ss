@@ -91,7 +91,7 @@
 
 (define (MLGet lp)
   (with-handlers ((exn:break?
-                   (lambda (x) (MLPutMessage lp 3))))
+                   (lambda _ (MLPutMessage lp 3))))
     (MLFlush lp)
     (MLWait lp (break-enabled)))
   (unless (zero? (MLError lp))

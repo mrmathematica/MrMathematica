@@ -33,13 +33,11 @@
              ((macosx)
               "mathlink.framework/mathlink"))))
 
-(define MLOpenArgcArgv
+(define MLOpen
   (let ((MLInitialize
          (get-ffi-obj "MLInitialize" mathlink
                       (_fun (_pointer = #f) -> (p : _pointer)
-                            -> (if (ptr-equal? p #f)
-                                   (mathlink-error "MathKernel: MathLink Initialize Error")
-                                   p)))))
+                            -> (or p (mathlink-error "MathKernel: MathLink Initialize Error"))))))
     (get-ffi-obj "MLOpenArgcArgv" mathlink
                  (_fun args ::
                        (ep : _pointer = (MLInitialize))
@@ -47,11 +45,11 @@
                        ((_list i _string/locale) = (cons "MrMathematica" args))
                        (_ptr o _int)
                        -> (lp : _pointer)
-                       -> (if (ptr-equal? lp #f)
-                              (mathlink-error "MathKernel: MathLink Open Error")
+                       -> (if lp
                               (begin (MLNextPacket lp)
                                      (MLNewPacket lp)
-                                     (make-MathLink ep lp #t (make-semaphore 1))))))))
+                                     (make-MathLink ep lp #t (make-semaphore 1)))
+                              (mathlink-error "MathKernel: MathLink Open Error"))))))
 
 (define MLClose
   (let ((MLClose
@@ -103,7 +101,7 @@
   (let ((release (get-ffi-obj "MLReleaseUTF32String" mathlink
                               (_fun _pointer _pointer _int -> _void)))
         (make (get-ffi-obj "scheme_make_sized_char_string" #f
-                           (_fun _pointer _long _bool -> _scheme))))
+                           (_fun _pointer _intptr _bool -> _scheme))))
     (get-ffi-obj "MLGetUTF32String" mathlink
                  (_fun (l : _pointer) (s : (_ptr o _pointer)) (len : (_ptr o _int)) -> _bool
                        -> (begin0 (make s len #t)

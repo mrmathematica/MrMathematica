@@ -89,9 +89,9 @@
            (MLPutArgCount lp (sub1 (length mexp)))
            (andmap (lambda (arg) (MLPut lp arg)) mexp)))))
 
-(define (MLGet lp break?)
+(define (MLGet lp)
   (with-handlers ((exn:break?
-                   (lambda _ (MLPutMessage lp 3))))
+                   (lambda (x) (MLPutMessage lp 3))))
     (MLFlush lp)
     (MLWait lp (break-enabled)))
   (unless (zero? (MLError lp))
@@ -101,16 +101,16 @@
      (unless (MLClearError lp)
        (mathlink-error "MathEval: MathLink fatal error"))
      (MLNewPacket lp)
-     (MLGet lp break?))
+     (MLGet lp))
     ((1)
      (display (MLGetString lp))
      (flush-input)
      (MLPut lp (read))
-     (MLGet lp break?))
+     (MLGet lp))
     ((2)
      (display (MLGetString lp))
      (MLNewPacket lp)
-     (MLGet lp break?))
+     (MLGet lp))
     ((3)
      (MLGetExp lp))
     ((5)
@@ -118,16 +118,16 @@
      (MLNextPacket lp)
      (warning (MLGetString lp))
      (MLNewPacket lp)
-     (MLGet lp break?))
+     (MLGet lp))
     ((21)
      (display (MLGetString lp))
      (flush-input)
      (MLPut lp (read-line))
      (MLNewPacket lp)
-     (MLGet lp break?))
+     (MLGet lp))
     (else
      (MLNewPacket lp)
-     (MLGet lp break?))))
+     (MLGet lp))))
 
 (define (MLGetExp lp)
   (case (MLGetNext lp)
@@ -148,11 +148,8 @@
      (MLGetReal lp))
     ((70)
      (Mathematica->Scheme
-      (let loop ((n (MLGetArgCount lp)))
-        (if (negative? n)
-            (list)
-            (cons (MLGetExp lp)
-                  (loop (sub1 n)))))))))
+      (build-list (add1 (MLGetArgCount lp))
+                  (lambda _ (MLGetExp lp)))))))
 
 (define MathKernel
   (case-lambda
@@ -166,7 +163,7 @@
                    ((macosx)
                     "/Applications/Mathematica.app/Contents/MacOS/MathKernel -mathlink"))))
     (arg
-     (let ((link (apply MLOpenArgcArgv arg)))
+     (let ((link (apply MLOpen arg)))
        (set-MathLink-ref! link (register-custodian-shutdown link MLClose #:at-exit? #t))
        (current-mathlink link)
        link))))
@@ -176,13 +173,11 @@
                        (lambda ()
                          (unless (MathLink-ref link)
                            (mathlink-error "MathEval: MathLink is closed"))
-                         (let ((lp (MathLink-lp link))
-                               (break? (break-enabled)))
-                           (parameterize-break #f
-                             (MLPutFunction lp #"EvaluatePacket" 1)
-                             (MLPut lp exp)
-                             (MLEndPacket lp)
-                             (MLGet lp break?))))))
+                         (let ((lp (MathLink-lp link)))
+                           (MLPutFunction lp #"EvaluatePacket" 1)
+                           (MLPut lp exp)
+                           (MLEndPacket lp)
+                           (MLGet lp)))))
 
 (define MathExit
   (case-lambda

@@ -1,0 +1,11 @@
+#lang setup/infotab
+(define name "MrMathematica")
+(define blurb '("Union of Mathematica and Scheme."))
+(define categories '(scientific devtools))
+(define homepage "http://www.cs.utah.edu/~czhu/SchemeLink/mrmma.html")
+(define primary-file "main.ss")
+(define scribblings '(("mrmma.scrbl" () (interop))))
+(define tools '(("tool.ss")))
+(define tool-names '("MrMathematica"))
+(define tool-icons '("mathematica8.png"))
+(define tool-urls '("http://www.cs.utah.edu/~czhu/SchemeLink/mrmma.html"))

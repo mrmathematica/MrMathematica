@@ -3,6 +3,7 @@
 (require "mathlink.ss"
          "translation.ss"
          racket/contract
+         (only-in ffi/unsafe register-finalizer)
          ffi/unsafe/custodian)
 
 (provide/contract (MathKernel
@@ -163,8 +164,13 @@
                    ((macosx)
                     "/Applications/Mathematica.app/Contents/MacOS/MathKernel -mathlink"))))
     (arg
-     (let ((link (apply MLOpen arg)))
-       (set-MathLink-ref! link (register-custodian-shutdown link MLClose #:at-exit? #t))
+     (let* ((link (apply MLOpen arg))
+            (ref (register-custodian-shutdown link MathExit #:at-exit? #t)))
+       (set-MathLink-ref! link ref)
+       (register-finalizer link
+                           (lambda (link)
+                             (unregister-custodian-shutdown link ref)
+                             (MathExit link)))
        (current-mathlink link)
        link))))
 

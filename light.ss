@@ -166,9 +166,7 @@
     (arg
      (let ((link (apply MLOpen arg)))
        (set-MathLink-ref! link
-                          (register-custodian-shutdown link MLClose
-                                                       #:at-exit? #t
-                                                       #:weak? #t))
+                          (register-custodian-shutdown link MLClose #:at-exit? #t))
        (register-finalizer link MathExit)
        (current-mathlink link)
        link))))
@@ -197,4 +195,5 @@
                               (when ref
                                 (set-MathLink-ref! link #f)
                                 (unregister-custodian-shutdown link ref)
-                                (MLClose link))))))))
+                                (MLClose link)
+                                (set-phantom-bytes! (MathLink-phantom link) 0))))))))

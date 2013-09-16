@@ -164,13 +164,12 @@
                    ((macosx)
                     "/Applications/Mathematica.app/Contents/MacOS/MathKernel -mathlink"))))
     (arg
-     (let* ((link (apply MLOpen arg))
-            (ref (register-custodian-shutdown link MathExit #:at-exit? #t)))
-       (set-MathLink-ref! link ref)
-       (register-finalizer link
-                           (lambda (link)
-                             (unregister-custodian-shutdown link ref)
-                             (MathExit link)))
+     (let ((link (apply MLOpen arg)))
+       (set-MathLink-ref! link
+                          (register-custodian-shutdown link MLClose
+                                                       #:at-exit? #t
+                                                       #:weak? #t))
+       (register-finalizer link MathExit)
        (current-mathlink link)
        link))))
 

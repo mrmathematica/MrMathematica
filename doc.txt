@@ -1,0 +1,194 @@
+  _DrMathematica_  *  _ChongKai Zhu_
+======================================
+
+
+DrMathematica allows you to call _Mathematica_ from Scheme.
+
+> MathKernel : [string*] -> MathLink
+
+Load the Mathematica kernel and return a _MathLink_. The argument(s) 
+is command to open the MathLink connection. If not presented, 
+DrMathematica will use "-linkname" "math -MathLink" as default, which 
+in general will always open the Mathematica kernel. See the 
+Mathmatica Book 2.13.14 "Running Mathematica from Within an External 
+Program" for more about this. The return value, a MathLink, is a 
+value indicates the Mathematica kernel. It can be save to a variable 
+and later used to distinguish different Mathematica kernel.
+
+> MathEval : S-exp [MathLink] -> S-exp
+
+Use Mathematica Kernel to evaluate. You should write the S-exp in 
+Scheme style and they will be translated to Mathematica style 
+automatically. Only numbers, booleans, symbols, strings, voids or 
+none empty lists are allowed in the input. Otherwise 
+exn:application:contract will be raised.
+
+The optional argment, MathLink, specifies using which Mathematica 
+kernel to do the computation. If no MathLink is given, DrMathematica 
+will use the current-mathlink, or if current-mathlink is #f, call 
+(MathKernel) to create one.
+
+> MathExit : [MathLink] -> void
+
+Close the Mathematica Kernel. Please avoid using closed MathLink, 
+otherwise error will be caused.
+
+> MathLink? : exp -> boolean
+
+Check whether the argument is a MathLink.
+
+> current-mathlink
+
+A parameter procedure that sets and retrieves the default MathLink to 
+use. #f indicates no current MathLink. Each time MathKernel was 
+called, the return value will be automatically set as 
+current-mathlink.
+
+> current-mathlink
+
+A parameter procedure that sets and retrieves the default MathLink to 
+use. #f indicates no current MathLink. Each time MathKernel was 
+called, the return value will be automatically set as current-mathlink.
+
+> math-break-enabled
+
+A parameter procedure that determines whether to convert exn:break in
+Scheme into an Interrupt/Abort in Mathematica. The value of the 
+parameter can be:
+
+#f		exn:break will not be send to Mathematica
+'Interrupt	exn:break will be convert to a Mathematica Interrupt
+'Abort		exn:break will be convert to a Mathematica Abort
+
+If the parameter is set to be #f, during Mathematica is doing 
+computation, the Scheme thread is blocked.
+
+> exn:mathlink
+
+A subtypes of exn. Raised when there is an error on mathlink. Besides 
+the message and continuation-marks fields, it also provides a link 
+field telling which mathlink raise the error.
+
+
+
+Translation between Scheme and Mathematica: 
+
+S-exp such as '(f x y) will be translated to f[x,y] and send to 
+Mathematica Kernel. The return expression of Mathematica will be 
+translated back into Scheme. Besides that, DrMathematica also use the 
+following dictionary to translate function names:
+
+'((* . Times)
+  (- . Minus)
+  (+ . Plus)
+  (/ . Divide)
+  (< . Less)
+  (<= . LessEqual)
+  (= . Equal)
+  (> . Greater)
+  (>= . GreaterEqual)
+  (abs . Abs)
+  (acos . ArcCos)
+  (and . And)
+  (angle . Arg)
+  (asin . ArcSin)
+  (atan . ArcTan)
+  (begin . CompoundExpression)
+  (ceiling . Ceiling)
+  (cos . Cos)
+  (denominator . Denominator)
+  (exp . Exp)
+  (expt . Power)
+  (floor . Floor)
+  (gcd . GCD)
+  (if . If)
+  (imag-part . Im)
+  (lcm . LCM)
+  (list . List)
+  (log . Log)
+  (magnitude . Abs)
+  (max . Max)
+  (min . Min)
+  (modulo . Mod)
+  (negative? . Negative)
+  (not . Not)
+  (number? . NumberQ)
+  (numerator . Numerator)
+  (or . Or)
+  (positive? . Positive)
+  (quotient . Quotient)
+  (rationalize . Rationalize)
+  (round . Round)
+  (sin . Sin)
+  (sqrt . Sqrt)
+  (string-length . StringLength)
+  (tan . Tan)
+  (truncate . IntegerPart))
+
+The translation table is defined in "translation.ss". If you just 
+want no translation, change this file so that it provides the 
+identity function.
+
+There are some other functions that are similar in Mathematica and 
+Scheme. According to the need, you can also add translation rules 
+into the table. Here I list some such function pairs: 
+
+append  Join
+apply  Apply
+build-list  Array
+car  First
+cdr  Rest
+collect-garbage  Share
+compose  Composition
+cond  Which
+cons  Prepend
+copy-file  CopyFile/CopyDirectory
+current-directory  Directory/SetDirectory
+current-memory-use  MemoryInUse
+current-process-milliseconds  TimeUsed
+current-seconds  AbsoluteTime
+define  Set
+delay  Hold/Unevaluated
+delete-directory  DeleteDirectory
+delete-file  DeleteFile
+directory-list  FileNames
+display  Print
+even?  EvenQ
+exit  Exit/Quit
+file-or-directory-modify-seconds  FileDate/SetFileDate
+file-size  FileByteCount
+filter  Select
+fluid-let  Block
+foldl  Fold
+for-each  Scan
+force  ReleaseHold/Evaluate
+getenv  Environment
+identity  Identity
+integer?  IntegerQ
+lambda  Function
+length  Length
+let  Module
+list-ref  Part
+list-tail  Drop
+map  Map
+make-directory  CreateDirectory
+member/memq/memv  MemberQ
+nand  Nand
+nor  Nor
+odd?  OddQ
+pair?  AtomQ
+read  Input
+rename-file-or-directory  RenameFile/RenameDirectory
+reverse  Reverse
+shell-execute  Run/RunThrough
+sleep  Pause
+string->symbol  Symbol
+string-append  StringJoin
+symbol->string  SymbolName
+system-type  $System
+time  Timing
+version  $Version
+zero?  ZeroQ
+
+Notice that they are not identical so some rules should be 
+conditional. Learn the default rule of '- for details.

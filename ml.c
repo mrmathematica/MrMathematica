@@ -3,15 +3,7 @@
 
 #define scheme_make_bool(i) (i ? scheme_true : scheme_false)
 
-#define linkpoint(n) ((mathlink*)argv[n])->val
-
-typedef struct
-{
-	Scheme_Type type;
-	MLINK val;
-}mathlink;
-
-Scheme_Type MathLink_Type;
+#define linkpoint(n) SCHEME_CPTR_VAL(argv[n])
 
 static Scheme_Object *warning(int argc, Scheme_Object **argv)
 {
@@ -21,21 +13,22 @@ static Scheme_Object *warning(int argc, Scheme_Object **argv)
 
 static Scheme_Object *init_and_openlink(int argc, Scheme_Object **argv)
 {
-	long err;
 	MLENV ep;
 	MLINK lp;
-	mathlink *ret;
+	int err;
 	char **arg;
 	int i;
 	
 	arg = calloc( argc+1, sizeof(char*));
 	arg[0] = "mrmathematica";
 	for(i=0;i<argc;i++)
-		arg[i+1] = SCHEME_STR_VAL( argv[i]);
+	{
+		arg[i+1] = SCHEME_BYTE_STR_VAL( argv[i]);
+	}
 	
 #if MACINTOSH_MATHLINK
 	MLYieldFunctionObject yielder;
-	argc = mlmactty_init( &argv);
+	argc = mlmactty_init( &arg);
 #endif
 	
 	ep =  MLInitialize( (MLParametersPointer)0);
@@ -49,7 +42,7 @@ static Scheme_Object *init_and_openlink(int argc, Scheme_Object **argv)
 	yielder = MLCreateYieldFunction( ep, NewMLYielderProc( MLDefaultYielder), 0);
 #endif
 
-	lp = MLOpenArgv( ep, arg, arg+(argc+1), &err);
+	lp = MLOpenArgv(ep, arg, arg+(argc+1), &err);
 	if( lp == (MLINK)0)
 	{
 		MLClose( lp);
@@ -60,10 +53,8 @@ static Scheme_Object *init_and_openlink(int argc, Scheme_Object **argv)
 	MLSetYieldFunction( lp, yielder);
 #endif
 	
-	ret = scheme_malloc_atomic( sizeof( mathlink));
-	ret->type = MathLink_Type;
-	ret->val = lp;
-	return ((Scheme_Object*)ret);
+	free( arg);
+	return scheme_make_cptr( lp, scheme_intern_symbol( "MathLink"));
 }
 
 static Scheme_Object *MathPutFunction(int argc, Scheme_Object **argv)
@@ -78,12 +69,44 @@ static Scheme_Object *MathPutArgCount(int argc, Scheme_Object **argv)
 
 static Scheme_Object *MathPutString(int argc, Scheme_Object **argv)
 {
-	return scheme_make_bool( MLPutByteString( linkpoint(1), SCHEME_STR_VAL( argv[0]), SCHEME_STRLEN_VAL( argv[0])));
+	unsigned short *s;
+	long ulen;
+
+	s = scheme_ucs4_to_utf16( SCHEME_CHAR_STR_VAL( argv[0]), 0, SCHEME_CHAR_STRLEN_VAL( argv[0]), s, -1, &ulen, 0);
+	return scheme_make_bool( MLPutUnicodeString( linkpoint(1), s, ulen));
 }
 
-static Scheme_Object *MathPutReal(int argc, Scheme_Object **argv)
+static Scheme_Object *MathPutByteString(int argc, Scheme_Object **argv)
 {
-	return scheme_make_bool( MLPutReal( linkpoint(1), SCHEME_DBL_VAL( argv[0])));
+	return scheme_make_bool( MLPutByteString( linkpoint(1), SCHEME_BYTE_STR_VAL( argv[0]), SCHEME_BYTE_STRLEN_VAL( argv[0])));
+}
+
+void MathPutNumberHelp(Scheme_Object *num, MLINK lp)
+{
+	if (SCHEME_INTP( num))
+		MLPutInteger( lp, SCHEME_INT_VAL( num));
+	else if (SCHEME_DBLP( num))
+		MLPutReal( lp, SCHEME_DBL_VAL( num));
+	else if (SCHEME_FLTP( num))
+		MLPutReal( lp, SCHEME_FLT_VAL( num));
+	else if (SCHEME_BIGNUMP( num)) {
+		MLPutNext( lp, MLTKINT);
+		MLPutString( lp, scheme_bignum_to_string( num, 10));
+	} else if (SCHEME_RATIONALP( num)) {
+		MLPutFunction( lp, "Rational", 2L);
+		MathPutNumberHelp( scheme_rational_numerator( num), lp);
+		MathPutNumberHelp( scheme_rational_denominator( num), lp);
+	} else if (SCHEME_COMPLEXP( num)) {
+		MLPutFunction( lp, "Complex", 2L);
+		MathPutNumberHelp( scheme_complex_real_part( num), lp);
+		MathPutNumberHelp( scheme_complex_imaginary_part( num), lp);
+	}
+}	
+
+static Scheme_Object *MathPutNumber(int argc, Scheme_Object **argv)
+{
+	MathPutNumberHelp( argv[0], linkpoint(1));
+	return scheme_void;
 }
 
 static Scheme_Object *MathPutNext(int argc, Scheme_Object **argv)
@@ -108,33 +131,41 @@ static Scheme_Object *MathNewPacket(int argc, Scheme_Object **argv)
 
 static Scheme_Object *MathGetString(int argc, Scheme_Object **argv)
 {
+	unsigned short *s1;
+	mzchar *s2;
+	long n, ulen;
+	
+	MLGetUnicodeString( linkpoint(0), &s1, &n);
+	s2 = scheme_utf16_to_ucs4(s1, 0, n, s2, -1, &ulen, 1);
+	MLDisownUnicodeString( linkpoint(0), s1, n);
+	s2[ulen] = 0;
+	return scheme_make_sized_char_string( s2, ulen, 0);
+}
+
+static Scheme_Object *MathGetByteString(int argc, Scheme_Object **argv)
+{
 	unsigned char *s;
 	long n;
 	Scheme_Object *ret;
 	
-	MLGetByteString( linkpoint(0), &s, &n, 0L);
-	ret = scheme_make_sized_string(s, n, 1);
-	MLDisownString( linkpoint(0), s);
+	MLGetByteString ( linkpoint(0), &s, &n, 0L);
+	ret = scheme_make_sized_byte_string(s, n, 1);
+	MLDisownByteString( linkpoint(0), s, n);
 	return ret;
 }
 
 static Scheme_Object *MathGetSymbol(int argc, Scheme_Object **argv)
 {
-	unsigned char *s;
+	unsigned short *s1;
+	char *s2;
 	long n;
-	Scheme_Object *ret;
+	int len;
 	
-	MLGetByteSymbol( linkpoint(0), &s, &n, 0L);
-	ret = scheme_intern_exact_symbol( s, n);
-	MLDisownByteSymbol( linkpoint(0), s, n);
-	return ret;
-}
-
-static Scheme_Object *MathGetReal(int argc, Scheme_Object **argv)
-{
-	double x;
-	MLGetReal( linkpoint(0), &x);
-	return scheme_make_double( x);
+	MLGetUnicodeSymbol( linkpoint(0), &s1, &n);
+	s2 = (char *)scheme_malloc_atomic( scheme_utf8_encode(s1, 0, n, NULL, 0, 1));
+	len = scheme_utf8_encode(s1, 0, n, s2, 0, 1);
+	MLDisownUnicodeSymbol( linkpoint(0), s1, n);
+	return scheme_intern_exact_symbol( s2, len);
 }
 
 static Scheme_Object *MathGetNext(int argc, Scheme_Object **argv)
@@ -174,7 +205,7 @@ static Scheme_Object *MathError(int argc, Scheme_Object **argv)
 
 static Scheme_Object *MathErrorMessage(int argc, Scheme_Object **argv)
 {
-	return scheme_make_string_without_copying( MLErrorMessage( linkpoint(0)));
+	return scheme_make_byte_string_without_copying( MLErrorMessage( linkpoint(0)));
 }
 
 static Scheme_Object *MathClearError(int argc, Scheme_Object **argv)
@@ -184,7 +215,12 @@ static Scheme_Object *MathClearError(int argc, Scheme_Object **argv)
 
 static Scheme_Object *SCHEME_MathLinkP(int argc, Scheme_Object **argv)
 {
-	return scheme_make_bool( SCHEME_TYPE( argv[0]) == MathLink_Type);
+	return scheme_make_bool( SCHEME_CPTRP( argv[0]) && scheme_eq( SCHEME_CPTR_TYPE( argv[0]), scheme_intern_symbol( "MathLink")));
+}
+
+static Scheme_Object *MathPutCharSymbol(int argc, Scheme_Object **argv)
+{
+	return scheme_make_bool( MLPutSymbol( linkpoint(1), SCHEME_SYM_VAL( argv[0])));
 }
 
 
@@ -192,9 +228,8 @@ Scheme_Object *scheme_reload(Scheme_Env *env)
 {
   Scheme_Env *menv;
   Scheme_Object *proc;
-  
-  menv = scheme_primitive_module(scheme_intern_symbol("ml"), env);
 
+  menv = scheme_primitive_module(scheme_intern_symbol("ml"), env);
 
   proc = scheme_make_prim_w_arity(warning, "warning", 1, 1);
   scheme_add_global("warning", proc, menv);
@@ -211,8 +246,8 @@ Scheme_Object *scheme_reload(Scheme_Env *env)
   proc = scheme_make_prim_w_arity(MathPutString, "MathPutString", 2, 2);
   scheme_add_global("MathPutString", proc, menv);
 
-  proc = scheme_make_prim_w_arity(MathPutReal, "MathPutReal", 2, 2);
-  scheme_add_global("MathPutReal", proc, menv);
+  proc = scheme_make_prim_w_arity(MathPutNumber, "MathPutNumber", 2, 2);
+  scheme_add_global("MathPutNumber", proc, menv);
 
   proc = scheme_make_prim_w_arity(MathPutNext, "MathPutNext", 2, 2);
   scheme_add_global("MathPutNext", proc, menv);
@@ -231,9 +266,6 @@ Scheme_Object *scheme_reload(Scheme_Env *env)
 
   proc = scheme_make_prim_w_arity(MathGetSymbol, "MathGetSymbol", 1, 1);
   scheme_add_global("MathGetSymbol", proc, menv);
-
-  proc = scheme_make_prim_w_arity(MathGetReal, "MathGetReal", 1, 1);
-  scheme_add_global("MathGetReal", proc, menv);
 
   proc = scheme_make_prim_w_arity(MathGetNext, "MathGetNext", 1, 1);
   scheme_add_global("MathGetNext", proc, menv);
@@ -262,6 +294,15 @@ Scheme_Object *scheme_reload(Scheme_Env *env)
   proc = scheme_make_prim_w_arity(SCHEME_MathLinkP, "MathLink?", 1, 1);
   scheme_add_global("MathLink?", proc, menv);
 
+  proc = scheme_make_prim_w_arity(MathGetByteString, "MathGetByteString", 1, 1);
+  scheme_add_global("MathGetByteString", proc, menv);
+
+  proc = scheme_make_prim_w_arity(MathPutByteString, "MathPutByteString", 2, 2);
+  scheme_add_global("MathPutByteString", proc, menv);
+
+  proc = scheme_make_prim_w_arity(MathPutCharSymbol, "MathPutCharSymbol", 2, 2);
+  scheme_add_global("MathPutCharSymbol", proc, menv);
+
   scheme_finish_primitive_module(menv);
   
   return scheme_void;
@@ -269,8 +310,6 @@ Scheme_Object *scheme_reload(Scheme_Env *env)
 
 Scheme_Object *scheme_initialize(Scheme_Env *env)
 {
-  /*scheme_set_param(scheme_config, MZCONFIG_CASE_SENS, scheme_true);*/
-  MathLink_Type = scheme_make_type( "<MathLink>");
   return scheme_reload(env);
 }
 

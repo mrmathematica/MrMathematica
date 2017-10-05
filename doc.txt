@@ -1,37 +1,76 @@
-  _DrMathematica_  *  _ChongKai Zhu_
+  _MrMathematica_  *  _ChongKai Zhu_
 ======================================
 
+MrMathematica allows you to call _Mathematica_ from PLT Scheme.
 
-DrMathematica allows you to call _Mathematica_ from Scheme.
+_mathematica.ss_
+----------------
 
-> MathKernel : [string*] -> MathLink
+> MathKernel : [byte-string*] -> MathLink
 
-Load the Mathematica kernel and return a _MathLink_. The argument(s) 
-is command to open the MathLink connection. If not presented, 
-DrMathematica will use "-linkname" "math -MathLink" as default, which 
-in general will always open the Mathematica kernel. See the 
-Mathmatica Book 2.13.14 "Running Mathematica from Within an External 
-Program" for more about this. The return value, a MathLink, is a 
-value indicates the Mathematica kernel. It can be save to a variable 
-and later used to distinguish different Mathematica kernel.
+Open a _MathLink_ connectiona. The arguments are passed to 
+MLOpenArgv. Check Mathematica/MathLink document for details about 
+the arguments. If not presented, MrMathematica will use #"-linkname" 
+#"math -mathlink" as default, which in general will open a new local 
+Mathematica kernel.
 
-> MathEval : S-exp [MathLink] -> S-exp
+In general, establishing a connection to a remote kernel requires 
+two steps. First, the remote kernel must be started, then it must be 
+instructed to establish a MathLink connection to MzScheme. Various 
+MathLink commands can achieve the result.
 
-Use Mathematica Kernel to evaluate. You should write the S-exp in 
-Scheme style and they will be translated to Mathematica style 
-automatically. Only numbers, booleans, symbols, strings, voids or 
-none empty lists are allowed in the input. Otherwise 
-exn:application:contract will be raised.
+1. Active Connection (LinkLaunch)
+An active connection is initiated by using the MathLink function 
+LinkLaunch["oscommands", options]. The argument oscommands is an 
+operating system command that makes a connection to a remote machine 
+and starts a Mathematica kernel on that remote machine. LinkLaunch[] 
+is used by default for launching kernels on the local machine.
+
+2. Callback Connection (LinkCreate)
+For kernels on remote machines it is generally better to establish 
+separate MathLink connections, rather than using the command channel 
+opened by LinkLaunch. The host computer opens a MathLink link in 
+Listen mode using LinkCreate[], then the remote kernel is instructed 
+to connect to the listening link, usually by shell executing
+
+ssh -f remotehost math -mathlink -linkmode Connect -linkname 
+'linkspecification'
+
+(where remotehost and linkspecification should be substitude with 
+actual values) from the host computer.
+
+3. Passive Connection (LinkConnect)
+Active or callback connections may not be available because of 
+operating system deficiencies or security measures. If this is the 
+case, another method for establishing a connection is available. You 
+can manually start a kernel on a remote machine and instruct it to 
+open a TCPIP port on which to listen for connection requests. This 
+is usually achieved by providing the command-line arguments 
+-mathlink -linkcreate to the command to start the kernel, usually 
+math. (Under Windows, add -linkprotocol TCPIP.) The started kernel 
+will tell you the ports on which it is listening. In MzScheme you 
+can make a connection to a listening kernel with the following 
+command 
+
+(MathKernel #"-linkconnect" #"-linkname" #"port1@hostname,port2@hostname")
+
+(Under Windows, add #"-linkprotocol" #"TCPIP")
+
+> MathEval : Mexp [MathLink] -> Mexp
+
+Use Mathematica Kernel to evaluate. You should write the Mexp as a 
+S-exp and they will be translated to Mathematica style automatical-
+ly. Only number, boolean, symbol, string, void or none empty list of 
+Mexp are recognized as Mexp.
 
 The optional argment, MathLink, specifies using which Mathematica 
-kernel to do the computation. If no MathLink is given, DrMathematica 
+kernel to do the computation. If no MathLink is given, MrMathematica 
 will use the current-mathlink, or if current-mathlink is #f, call 
 (MathKernel) to create one.
 
 > MathExit : [MathLink] -> void
 
-Close the Mathematica Kernel. Please avoid using closed MathLink, 
-otherwise error will be caused.
+Close the Mathematica Kernel. Please avoid using closed MathLink.
 
 > MathLink? : exp -> boolean
 
@@ -39,44 +78,51 @@ Check whether the argument is a MathLink.
 
 > current-mathlink
 
-A parameter procedure that sets and retrieves the default MathLink to 
+A parameter procedure that sets or retrieves the default MathLink to 
 use. #f indicates no current MathLink. Each time MathKernel was 
-called, the return value will be automatically set as 
-current-mathlink.
-
-> current-mathlink
-
-A parameter procedure that sets and retrieves the default MathLink to 
-use. #f indicates no current MathLink. Each time MathKernel was 
-called, the return value will be automatically set as current-mathlink.
+called, the return value will be automatically set as current-
+mathlink.
 
 > math-break-enabled
 
-A parameter procedure that determines whether to convert exn:break in
-Scheme into an Interrupt/Abort in Mathematica. The value of the 
+A parameter procedure that determines whether to convert exn:break 
+in Scheme into an Interrupt/Abort in Mathematica. The value of the 
 parameter can be:
-
-#f		exn:break will not be send to Mathematica
+#f		exn:break will not be sent to Mathematica
 'Interrupt	exn:break will be convert to a Mathematica Interrupt
 'Abort		exn:break will be convert to a Mathematica Abort
 
-If the parameter is set to be #f, during Mathematica is doing 
-computation, the Scheme thread is blocked.
+The default value is 'Interrupt.
 
-> exn:mathlink
+> frontend-mode
 
-A subtypes of exn. Raised when there is an error on mathlink. Besides 
-the message and continuation-marks fields, it also provides a link 
-field telling which mathlink raise the error.
+A parameter procedure that determines whether to work as a real 
+Mathematica Front-End (which consumes more resource but support all 
+Mathematica interaction, including Interrupt, Dialog, In/Out). The 
+default value is #f.
 
+> Mexp->image : Mexp [MathLink] -> image-snip%
 
+Convert a Mexp to a image.
+
+> $Display
+
+A parameter procedure that determines whether to display Graphics 
+from Mathematica Kernel as image in Scheme. The default value is #t.
+
+_mma.ss_
+--------
+
+The same package for MzScheme in case MrEd is not available. It 
+doesn't provide frontend-mode, Mexp->image and $Display.
 
 Translation between Scheme and Mathematica: 
+-------------------------------------------
 
 S-exp such as '(f x y) will be translated to f[x,y] and send to 
 Mathematica Kernel. The return expression of Mathematica will be 
-translated back into Scheme. Besides that, DrMathematica also use the 
-following dictionary to translate function names:
+translated back into Scheme. Besides that, MrMathematica also use 
+the following dictionary to translate function names:
 
 '((* . Times)
   (- . Minus)

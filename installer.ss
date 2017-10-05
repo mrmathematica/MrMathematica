@@ -1,15 +1,16 @@
 (module installer mzscheme
   (require (lib "setup-extension.ss" "make"))
   (provide pre-installer)
-  (define (pre-installer PLTHOME)
+  (define (pre-installer PLTHOME directory-path)
     (pre-install PLTHOME
-                 (collection-path "mrmathematica")
+                 directory-path
                  "ml.c"
                  PLTHOME
                  '()
                  '("ML")
+                 '("ml32i2m")
                  '()
                  '()
-                 '("ML32I2M.lib")
                  '()
-                 (lambda (t) (t)))))
+                 (lambda (t) (t))
+                 #f)))

@@ -20,27 +20,28 @@ MrMathematica allows you to call
 
 Before installing MrMathematica, you need to do the following two things:
 
-@itemize[@item{Install the MathLink dynamic library by copying it into the PLT
+@itemize[@item{Install the WSTP dynamic library by copying it into the PLT
           libraries (see @scheme[get-lib-search-dirs]), or into a systemwide
-          location such as @filepath{C:\Windows\SysWOW64} or @filepath{/lib}.
-          @link["https://reference.wolfram.com/legacy/v6/tutorial/MathLinkDeveloperGuide-Windows.html#25820"]{On Windows}
-          it is @filepath{ml32i3.dll} or @filepath{ml64i3.dll}, depending
+          location such as @filepath{C:\Windows\SysWOW64}, @filepath{/lib},
+          @filepath{/Library/Frameworks} or @filepath{~/Library/Frameworks}.
+          @link["https://reference.wolfram.com/language/tutorial/WSTPDeveloperGuide-Windows.html#19602"]{On Windows}
+          it is @filepath{wstp32i4.dll} or @filepath{wstp64i4.dll}, depending
           on whether you are on a 32-bit or 64-bit platform.
-          @link["https://reference.wolfram.com/legacy/v6/tutorial/MathLinkDeveloperGuide-Unix.html#26966"]{On Unix/Linux},
-          it is @filepath{libML32i3.so} or @filepath{libML64i3.so}.
-          @link["https://reference.wolfram.com/legacy/v6/tutorial/MathLinkDeveloperGuide-Macintosh.html#30231"]{On Mac OS X},
-          it is @filepath{mathlink.framework}.}
+          @link["https://reference.wolfram.com/language/tutorial/WSTPDeveloperGuide-Unix.html#1726529900"]{On Unix/Linux},
+          it is @filepath{libWSTP32i4.so} or @filepath{libWSTP64i4.so}.
+          @link["https://reference.wolfram.com/language/tutorial/WSTPDeveloperGuide-Macintosh.html#669747147"]{On Mac OS X},
+          it is @filepath{wstp.framework}.}
          
-         @item{Make sure that @link["http://reference.wolfram.com/legacy/v6/ref/program/MathKernel.html"]{@exec{MathKernel}}
-          or @link["http://reference.wolfram.com/legacy/v6/ref/program/math.html"]{@exec{math}}
+         @item{Make sure that @link["http://reference.wolfram.com/legacy/v8/ref/program/MathKernel.html"]{@exec{MathKernel}}
+          or @link["http://reference.wolfram.com/legacy/v8/ref/program/math.html"]{@exec{math}}
           will launch Mathematica kernel. On Unix/Linux the Mathematica
-          installer has done that. On Windows setting @envvar{PATH} to
+          installer should have done that. On Windows setting @envvar{PATH} to
           include the directory where Mathematica executable files locate
-          should be enough. On Mac OS X, MrMathematica looks for
+          should be enough. On Mac OS, MrMathematica looks for
           @filepath{/Applications/Mathematica.app/Contents/MacOS/MathKernel},
           which should be the correct place.}]
 
-Install @link["http://www.cs.utah.edu/~czhu/mrmathematica.plt"]{mrmathematica.plt}
+Install @link["https://github.com/mrmathematica/MrMathematica/releases"]{mrmathematica.plt}
 from File menu in DrScheme.
 
 @section{Use MrMathematica}

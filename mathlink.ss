@@ -5,7 +5,7 @@
 (provide (except-out (all-defined-out)
                      mathlink))
 
-(define-struct MathLink (ep lp (ref #:mutable) sema phantom))
+(define-struct MathLink (ep (lp #:mutable) sema))
 
 (define-struct (exn:fail:mathlink exn:fail) () #:transparent)
 (define-syntax-rule (mathlink-error str)
@@ -39,19 +39,22 @@
                        -> (if lp
                               (begin (MLNextPacket lp)
                                      (MLNewPacket lp)
-                                     (make-MathLink ep lp #t (make-semaphore 1) (make-phantom-bytes 65536)))
+                                     (make-MathLink ep lp (make-semaphore 1)))
                               (mathlink-error "MathKernel: MathLink Open Error"))))))
 
 (define MLClose
-  (let ((MLClose (get-ffi-obj 'WSClose mathlink
+  (let ((close (get-ffi-obj 'WSClose mathlink
                               (_fun _pointer -> _void)))
-        (MLDeinitialize
+        (deinitialize
          (get-ffi-obj 'WSDeinitialize mathlink
                       (_fun _pointer -> _void))))
     (lambda (link)
-      (MLPutMessage (MathLink-lp link) 1)
-      (MLClose (MathLink-lp link))
-      (MLDeinitialize (MathLink-ep link)))))
+      (let ((lp (MathLink-lp link)))
+        (when lp
+          (MLPutMessage (MathLink-lp link) 1)
+          (close (MathLink-lp link))
+          (deinitialize (MathLink-ep link))
+          (set-MathLink-lp! link #f))))))
 
 (define MLPutFunction
   (get-ffi-obj 'WSPutFunction mathlink

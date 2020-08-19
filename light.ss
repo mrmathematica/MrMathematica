@@ -3,11 +3,10 @@
 (require "mathlink.ss"
          "translation.ss"
          racket/contract
-         (only-in ffi/unsafe register-finalizer)
          ffi/unsafe/custodian)
 
 (provide/contract (MathKernel
-                   (->* () () #:rest (listof string?) any))
+                   (-> string? ... MathLink?))
                   (MathEval
                    (->* ((flat-rec-contract Mexp
                            number? boolean? symbol? string? void? eof-object?
@@ -164,18 +163,16 @@
                     "/Applications/Mathematica.app/Contents/MacOS/MathKernel -mathlink"))))
     (arg
      (let ((link (apply MLOpen arg)))
-       (set-MathLink-ref! link
-                          (register-custodian-shutdown link MLClose #:at-exit? #t))
-       (register-finalizer link MathExit)
+       (register-finalizer-and-custodian-shutdown link MLClose #:at-exit? #t)
        (current-mathlink link)
        link))))
 
 (define (MathEval exp (link (or (current-mathlink) (MathKernel))))
   (call-with-semaphore (MathLink-sema link)
                        (lambda ()
-                         (unless (MathLink-ref link)
-                           (mathlink-error "MathEval: MathLink is closed"))
                          (let ((lp (MathLink-lp link)))
+                           (unless lp
+                             (mathlink-error "MathEval: MathLink is closed"))
                            (MLPutFunction lp #"EvaluatePacket" 1)
                            (MLPut lp exp)
                            (MLEndPacket lp)
@@ -186,13 +183,6 @@
     (()
      (cond ((current-mathlink) => MathExit)))
     ((link)
-     (call-with-semaphore (MathLink-sema link)
-                          (lambda ()
-                            (when (eq? link (current-mathlink))
-                              (current-mathlink #f))
-                            (let ((ref (MathLink-ref link)))
-                              (when ref
-                                (set-MathLink-ref! link #f)
-                                (unregister-custodian-shutdown link ref)
-                                (MLClose link)
-                                (set-phantom-bytes! (MathLink-phantom link) 0))))))))
+     (when (eq? link (current-mathlink))
+       (current-mathlink #f))
+     (MLClose link))))

@@ -14,7 +14,8 @@
 
 MrMathematica allows you to call
 @link["http://www.wolfram.com/products/mathematica/"]{Mathematica} from
-@link["http://www.plt-scheme.org/"]{PLT Scheme}.
+@link["https://racket-lang.org/"]{Racket}.
+@link["https://www.wolfram.com/engine/"]{Wolfram Engine} is also tested to work.
 
 @section{Install MrMathematica}
 

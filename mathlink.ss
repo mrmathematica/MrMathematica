@@ -58,7 +58,7 @@
 
 (define MLPutFunction
   (get-ffi-obj 'WSPutFunction mathlink
-               (_fun _pointer _bytes _int -> _bool)))
+               (_fun _pointer _bytes/nul-terminated _int -> _bool)))
 
 (define MLPutArgCount
   (get-ffi-obj 'WSPutArgCount mathlink

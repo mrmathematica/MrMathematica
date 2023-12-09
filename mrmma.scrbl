@@ -12,16 +12,16 @@
 
 @margin-note{Mathematica is a registered trademark of @link["http://www.wolfram.com/"]{Wolfram Research, Inc.}}
 
-MrMathematica allows you to call
+MrMathematica allows calling
 @link["http://www.wolfram.com/products/mathematica/"]{Mathematica} from
 @link["https://racket-lang.org/"]{Racket}.
-@link["https://www.wolfram.com/engine/"]{Wolfram Engine} is also tested to work.
+@link["https://www.wolfram.com/engine/"]{Wolfram Engine} is tested to work as well.
 
 @section{Install MrMathematica}
 
 Before installing MrMathematica, you need to do the following two things:
 
-@itemize[@item{Install the WSTP dynamic library by copying it into the PLT
+@itemize[@item{Install WSTP dynamic library by copying it into the PLT
           libraries (see @scheme[get-lib-search-dirs]), or into a systemwide
           location such as @filepath{C:\Windows\SysWOW64}, @filepath{/lib},
           @filepath{/Library/Frameworks} or @filepath{~/Library/Frameworks}.
@@ -34,13 +34,10 @@ Before installing MrMathematica, you need to do the following two things:
           it is @filepath{wstp.framework}.}
          
          @item{Make sure that @link["http://reference.wolfram.com/legacy/v8/ref/program/MathKernel.html"]{@exec{MathKernel}}
-          or @link["http://reference.wolfram.com/legacy/v8/ref/program/math.html"]{@exec{math}}
           will launch Mathematica kernel. On Unix/Linux the Mathematica
           installer should have done that. On Windows setting @envvar{PATH} to
           include the directory where Mathematica executable files locate
-          should be enough. On Mac OS, MrMathematica looks for
-          @filepath{/Applications/Mathematica.app/Contents/MacOS/MathKernel},
-          which should be the correct place.}]
+          should be enough.}]
 
 Install @link["https://github.com/mrmathematica/MrMathematica/releases"]{mrmathematica.plt}
 from File menu in DrScheme.
@@ -53,7 +50,7 @@ from File menu in DrScheme.
 
 Opens a MathLink connection. The arguments are passed to MathLink function
 @link["http://reference.wolfram.com/language/ref/c/MLOpenArgcArgv.html"]{MLOpenArgcArgv}.
-If no argument is given, @scheme["-linkname" "math -mathlink"] will be used as
+If no argument is given, @scheme["-linkname" "MathKernel -mathlink"] will be used as
 default, which in general will launch a new local Mathematica kernel. Remote
 MathKernel is supported.}
 
@@ -77,13 +74,13 @@ will be automatically set as @scheme[current-mathlink].}
 
 @margin-note{@bold{Caution}: For floating point numbers, PLT Scheme only supports machine precision.}
 
-Uses Mathematica to evaluate. You should write @scheme[Mexp] as an S-exp and it
+Uses Mathematica to evaluate. You should write @scheme[Mexp] as S-exp and it
 will be translated to Mathematica style automatically. Only number, boolean,
 symbol, string, void, eof, vector of Mexps, or none empty list of Mexps is
 recognized as Mexp. See @secref{translation} for details.
 
-The optional argument @scheme[ml] specifies which Mathematica kernel to be used
-to do the computation. If no connection is given and @scheme[(current-mathlink)]
+The optional argument @scheme[ml] specifies the Mathematica kernel
+to do the evaluation. If no connection is given and @scheme[(current-mathlink)]
 is @scheme[#f], @scheme[(MathKernel)] will be called to create one.}
 
 @examples[#:eval (call-with-trusted-sandbox-configuration
@@ -135,7 +132,7 @@ It doesn't provide @scheme[Mexp->image].
 
 S-exp such as @scheme[(f x y)] is automatically translated to @litchar{f[x,y]}
 and send to Mathematica Kernel. Scheme vector such as @scheme[#(1 2)] is
-translated to Mathematica list @litchar{{1,2}}. The return expression of
+translated to Mathematica list @litchar{{1,2}}. Return expression from
 Mathematica is translated back into Scheme. Besides, MrMathematica also use the
 following dictionary to translate functions between Scheme and Mathematica:
 
@@ -196,10 +193,9 @@ following dictionary to translate functions between Scheme and Mathematica:
   (tan . #,(md Tan))
   (truncate . #,(md IntegerPart)))]
 
-The translation table is defined in @filepath{translation.ss}. You can change
-this file to adapt for your special needs, say you just want no translation, or,
-you want some more functions that are similar in Mathematica and Scheme also to
-be automatically translated. Please also note that the right hand side of the
+The translation table is defined in @filepath{translation.ss}. This file can
+be modified to adapt for personal needs, say no translation, or more functions
+to be automatically translated. The right hand side of the
 table can also be a function that takes the all the arguments as input, thus
 enable arbitrary translation rule. See the @scheme[-] and @md[Rational] rule in
 @filepath{translation.ss} as examples.

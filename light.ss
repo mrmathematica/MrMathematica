@@ -153,14 +153,7 @@
 (define MathKernel
   (case-lambda
     (()
-     (MathKernel "-linkname"
-                 (case (system-type 'os)
-                   ((unix)
-                    "math -mathlink")
-                   ((windows)
-                    "MathKernel -mathlink")
-                   ((macosx)
-                    "/Applications/Mathematica.app/Contents/MacOS/MathKernel -mathlink"))))
+     (MathKernel "-linkname" "MathKernel -mathlink"))
     (arg
      (let ((link (apply MLOpen arg)))
        (register-finalizer-and-custodian-shutdown link MLClose #:at-exit? #t)
